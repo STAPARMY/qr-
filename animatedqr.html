@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #ffffff; /* White text for dark mode */
+            --dark-bg: #000000; /* Black background */
+            --light-bg: #1a1a1a; /* Dark gray for containers */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--secondary-color);
+            line-height: 1.6;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        /* Background Video */
+        #background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1; /* Place behind other content */
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1; /* Place above the video */
+            background: rgba(26, 26, 26, 0.9); /* Semi-transparent dark background */
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .qr-generator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .options {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .preview {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-container {
+            padding: 20px;
+            border: 1px dashed #444; /* Darker border for dark mode */
+            border-radius: 5px;
+            background-color: var(--light-bg);
+            width: 280px;
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #qrcode {
+            text-align: center;
+        }
+
+        #qrcode img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="url"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444; /* Darker border for dark mode */
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: var(--light-bg);
+            color: var(--secondary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .content-type {
+            display: none;
+        }
+
+        .content-type.active {
+            display: block;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .download-btn {
+            background-color: var(--secondary-color);
+            color: var(--dark-bg);
+        }
+
+        .download-btn:hover {
+            background-color: #cccccc;
+        }
+
+        .loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(26, 26, 26, 0.8); /* Darker loading background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 5px solid #444; /* Darker spinner */
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .qr-generator {
+                flex-direction: column;
+            }
+            
+            .qr-container {
+                width: 220px;
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <video id="background-video" autoplay muted loop>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="container">
+        <header>
+            <h1>Custom QR Code Generator</h1>
+            <p class="subtitle">Create QR codes for WiFi, YouTube, TikTok, Images, Videos, and more</p>
+        </header>
+
+        <div class="qr-generator">
+            <div class="options">
+                <div class="form-group">
+                    <label for="content-type">Content Type</label>
+                    <select id="content-type">
+                        <option value="text">Plain Text</option>
+                        <option value="url">Website URL</option>
+                        <option value="wifi">WiFi Network</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="contact">Contact</option>
+                        <option value="image">Image</option>
+                        <option value="video">Video</option>
+                    </select>
+                </div>
+
+                <!-- Text Content -->
+                <div id="text-content" class="content-type active">
+                    <div class="form-group">
+                        <label for="text-input">Your Text</label>
+                        <textarea id="text-input" rows="3" placeholder="Enter your text here"></textarea>
+                    </div>
+                </div>
+
+                <!-- URL Content -->
+                <div id="url-content" class="content-type">
+                    <div class="form-group">
+                        <label for="url-input">Website URL</label>
+                        <input type="url" id="url-input" placeholder="https://example.com">
+                    </div>
+                </div>
+
+                <!-- WiFi Content -->
+                <div id="wifi-content" class="content-type">
+                    <div class="form-group">
+                        <label for="wifi-ssid">Network Name (SSID)</label>
+                        <input type="text" id="wifi-ssid" placeholder="Your WiFi Network">
+                    </div>
+                    <div class="form-group">
+                        <label for="wifi-password">Password</label>
+                        <input type="password" id="wifi-password" placeholder="WiFi Password">
+                    </div>
+                    <div class="form-group">
+                        <label for="wifi-type">Encryption Type</label>
+                        <select id="wifi-type">
+                            <option value="WPA">WPA/WPA2</option>
+                            <option value="WEP">WEP</option>
+                            <option value="nopass">No Password</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- YouTube Content -->
+                <div id="youtube-content" class="content-type">
+                    <div class="form-group">
+                        <label for="youtube-url">YouTube Video URL</label>
+                        <input type="url" id="youtube-url" placeholder="https://www.youtube.com/watch?v=...">
+                    </div>
+                </div>
+
+                <!-- TikTok Content -->
+                <div id="tiktok-content" class="content-type">
+                    <div class="form-group">
+                        <label for="tiktok-url">TikTok Video URL</label>
+                        <input type="url" id="tiktok-url" placeholder="https://www.tiktok.com/@username/video/...">
+                    </div>
+                </div>
+
+                <!-- Contact Content -->
+                <div id="contact-content" class="content-type">
+                    <div class="form-group">
+                        <label for="contact-name">Name</label>
+                        <input type="text" id="contact-name" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-phone">Phone</label>
+                        <input type="text" id="contact-phone" placeholder="+1 123 456 7890">
+                    </div>
+                    <div class="form-group">
+                        <label for="contact-email">Email</label>
+                        <input type="text" id="contact-email" placeholder="john@example.com">
+                    </div>
+                </div>
+
+                <!-- Image Content -->
+                <div id="image-content" class="content-type">
+                    <div class="form-group">
+                        <label for="image-url">Image URL</label>
+                        <input type="url" id="image-url" placeholder="https://example.com/image.png">
+                    </div>
+                </div>
+
+                <!-- Video Content -->
+                <div id="video-content" class="content-type">
+                    <div class="form-group">
+                        <label for="video-url">Video URL</label>
+                        <input type="url" id="video-url" placeholder="https://example.com/video.mp4">
+                    </div>
+                </div>
+
+                <!-- QR Code Size -->
+                <div class="form-group">
+                    <label for="qr-size">QR Code Size</label>
+                    <select id="qr-size">
+                        <option value="128">Small (128x128)</option>
+                        <option value="256" selected>Medium (256x256)</option>
+                        <option value="512">Large (512x512)</option>
+                    </select>
+                </div>
+
+                <div class="buttons">
+                    <button id="generate-btn">Generate QR Code</button>
+                    <button id="download-btn" class="download-btn" disabled>Download</button>
+                </div>
+            </div>
+
+            <div class="preview">
+                <h3>QR Code Preview</h3>
+                <div class="qr-container">
+                    <div id="qrcode"></div>
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <p id="scan-info" style="margin-top: 20px; text-align: center;">
+                    Generate a QR code to see preview
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Sound Effects -->
+    <audio id="click-sound">
+        <source src="https://www.soundjay.com/human/fart-01.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const contentTypeSelect = document.getElementById('content-type');
+            const contentTypes = document.querySelectorAll('.content-type');
+            const generateBtn = document.getElementById('generate-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const qrcodeDiv = document.getElementById('qrcode');
+            const qrSize = document.getElementById('qr-size');
+            const scanInfo = document.getElementById('scan-info');
+            const loading = document.querySelector('.loading');
+            const clickSound = document.getElementById('click-sound');
+
+            let qrCodeInstance = null;
+
+            // Play sound effect on button click or touch
+            function playSound() {
+                clickSound.currentTime = 0; // Reset sound to start
+                clickSound.play();
+            }
+
+            // Add sound effect to buttons
+            generateBtn.addEventListener('click', playSound);
+            downloadBtn.addEventListener('click', playSound);
+
+            // Add sound effect to any touch interaction
+            document.addEventListener('touchstart', playSound);
+
+            // Show/hide content type fields
+            contentTypeSelect.addEventListener('change', function() {
+                const selectedValue = this.value;
+                
+                contentTypes.forEach(type => {
+                    type.classList.remove('active');
+                });
+                
+                document.getElementById(`${selectedValue}-content`).classList.add('active');
+            });
+
+            // Generate QR Code
+            generateBtn.addEventListener('click', function() {
+                loading.classList.add('active');
+                
+                // Clear previous QR code
+                qrcodeDiv.innerHTML = '';
+                
+                // Get content based on selected type
+                const contentType = contentTypeSelect.value;
+                let qrContent = '';
+                
+                switch(contentType) {
+                    case 'text':
+                        qrContent = document.getElementById('text-input').value;
+                        break;
+                    case 'url':
+                        qrContent = document.getElementById('url-input').value;
+                        break;
+                    case 'wifi':
+                        const ssid = document.getElementById('wifi-ssid').value;
+                        const password = document.getElementById('wifi-password').value;
+                        const encType = document.getElementById('wifi-type').value;
+                        
+                        qrContent = `WIFI:S:${ssid};T:${encType};P:${password};;`;
+                        break;
+                    case 'youtube':
+                        qrContent = document.getElementById('youtube-url').value;
+                        break;
+                    case 'tiktok':
+                        qrContent = document.getElementById('tiktok-url').value;
+                        break;
+                    case 'contact':
+                        const name = document.getElementById('contact-name').value;
+                        const phone = document.getElementById('contact-phone').value;
+                        const email = document.getElementById('contact-email').value;
+                        
+                        qrContent = `BEGIN:VCARD\nVERSION:3.0\nN:${name}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+                        break;
+                    case 'image':
+                        qrContent = document.getElementById('image-url').value;
+                        break;
+                    case 'video':
+                        qrContent = document.getElementById('video-url').value;
+                        break;
+                }
+                
+                if (!qrContent) {
+                    alert('Please enter content for the QR code!');
+                    loading.classList.remove('active');
+                    return;
+                }
+                
+                // Create QR code
+                setTimeout(() => {
+                    const size = parseInt(qrSize.value);
+                    
+                    qrCodeInstance = new QRCode(qrcodeDiv, {
+                        text: qrContent,
+                        width: size,
+                        height: size,
+                        colorDark: '#000000', // Fixed foreground color
+                        colorLight: '#ffffff', // Fixed background color
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                    
+                    // Update scan info
+                    scanInfo.textContent = getInfoText(contentType);
+                    
+                    // Enable download button
+                    downloadBtn.disabled = false;
+                    
+                    loading.classList.remove('active');
+                }, 800); // Simulate processing time
+            });
+            
+            // Download QR Code
+            downloadBtn.addEventListener('click', function() {
+                const qrImage = qrcodeDiv.querySelector('img');
+                if (!qrImage) return;
+                
+                // Create a temporary link element
+                const link = document.createElement('a');
+                link.download = 'custom-qrcode.png';
+                link.href = qrImage.src;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+            
+            // Helper function to get info text
+            function getInfoText(contentType) {
+                switch(contentType) {
+                    case 'wifi':
+                        return 'Scan to connect to WiFi network';
+                    case 'youtube':
+                        return 'Scan to watch YouTube video';
+                    case 'tiktok':
+                        return 'Scan to view TikTok video';
+                    case 'contact':
+                        return 'Scan to save contact';
+                    case 'url':
+                        return 'Scan to visit website';
+                    case 'image':
+                        return 'Scan to view image';
+                    case 'video':
+                        return 'Scan to watch video';
+                    default:
+                        return 'QR code generated successfully';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
